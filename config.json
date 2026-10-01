@@ -1,0 +1,32 @@
+{
+    "api": {
+        "url_base": "http://192.168.1.28:7890/suivi_solaire",
+        "endpoints": {
+            "puissances_installees": "/puissance/installee/toutes",
+            "puissances_instantanees": "/puissance/instantanee/toutes",
+            "energies_instantanees": "/energie/instantanee/toutes",
+            "energie_estimee": "/energie/estimee/toutes",
+            "planification_eau_chaude": "/eau_chaude/planifiee/toutes"
+        },
+        "timeout": 5,
+        "intervalle_instantane_ms": 10000,
+        "intervalle_prevision_ms": 900000
+    },
+    "couleurs": {
+        "produite": "#F8BF2FFF",
+        "prelevee": "#3F9CD6FF",
+        "injectee": "#90EE90",
+        "consommee": "#F64D3C7F",
+        "puissance_installee": "rgba(200, 200, 200, 0.5)",
+        "texte": "#000000",
+        "fond_axes": "rgba(0, 0, 0, 0)",
+        "grille": "rgba(128, 128, 128, 0.2)"
+    },
+    "affichage": {
+        "titre": "📊 Tableau de bord - Supervision Photovoltaïque",
+        "hauteur_graphe_haut_vh": 42,
+        "hauteur_graphe_bas_vh": 42,
+        "energie_max_wh": 55000,
+        "periode_estimation_h": 0.25
+    }
+}

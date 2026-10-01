@@ -1,0 +1,23 @@
+/* assets/style.css */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;   /* Empêche le défilement : tout tient dans la vue */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: white;
+    color: black;
+}
+
+#react-entry-point, #react-root {
+    height: 100%;
+}
+
+/* Conteneur principal en pleine hauteur */
+._dash-app {
+    height: 100vh;
+}
+
+.modebar {
+display: none !important;
+}
