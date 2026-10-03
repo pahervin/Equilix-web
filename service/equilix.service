@@ -1,0 +1,15 @@
+[Unit]
+Description=Application Dash (Gunicorn)
+After=network.target
+
+[Service]
+User=paul-h
+Group=paul-h
+WorkingDirectory=/opt/equilix/web
+Environment="PATH=/opt/equilix/venv/bin"
+ExecStart=/opt/equilix/venv/bin/gunicorn --workers 2 --threads 4 --bind 0.0.0.0:8050 appli:server
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

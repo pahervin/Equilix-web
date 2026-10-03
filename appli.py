@@ -17,6 +17,7 @@ from services import (
 )
 
 app = dash.Dash(__name__, suppress_callback_exceptions=True, assets_folder='assets')
+server = app.server
 
 HAUTEUR_HAUT = AFFICHAGE.get("hauteur_graphe_haut_vh", 42)
 HAUTEUR_BAS = AFFICHAGE.get("hauteur_graphe_bas_vh", 42)
