@@ -1,5 +1,5 @@
 [Unit]
-Description=Application Dash (Gunicorn)
+Description=Tableau de bord Equilix
 After=network.target
 
 [Service]

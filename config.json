@@ -1,6 +1,6 @@
 {
     "api": {
-        "url_base": "http://192.168.1.28:7890/suivi_solaire",
+        "url_base": "http://192.168.1.28:7890/equilix_api",
         "endpoints": {
             "puissances_installees": "/puissance/installee/toutes",
             "puissances_instantanees": "/puissance/instantanee/toutes",
@@ -23,7 +23,7 @@
         "grille": "rgba(128, 128, 128, 0.2)"
     },
     "affichage": {
-        "titre": "📊 Tableau de bord - Supervision Photovoltaïque",
+        "titre": "📊 Equilix - Tableau de bord",
         "hauteur_graphe_haut_vh": 42,
         "hauteur_graphe_bas_vh": 42,
         "energie_max_wh": 55000,

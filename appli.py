@@ -1,6 +1,8 @@
 # app.py
 import locale
 from datetime import datetime, timezone
+from operator import pos
+
 import dash
 from dash import dcc, html, Input, Output, callback
 import plotly.graph_objects as go
@@ -16,7 +18,7 @@ from services import (
     obtenir_planification_eau_chaude
 )
 
-app = dash.Dash(__name__, suppress_callback_exceptions=True, assets_folder='assets')
+app = dash.Dash(__name__, suppress_callback_exceptions=True, assets_folder='assets', routes_pathname_prefix='/equilix/')
 server = app.server
 
 HAUTEUR_HAUT = AFFICHAGE.get("hauteur_graphe_haut_vh", 42)
@@ -42,15 +44,10 @@ app.layout = html.Div([
                  style={"width": "65%", "display": "inline-block", "verticalAlign": "top"}),
 
         # Indicateurs (centre, empilés verticalement)
-        html.Div([
-            dcc.Graph(id="indicateur-autoconsommation",
-                      style={"height": f"{HAUTEUR_HAUT * 0.45}vh", "width": "100%"},
-                      config=CONFIG_GRAPHE),
-            dcc.Graph(id="indicateur-autonomie",
-                      style={"height": f"{HAUTEUR_HAUT * 0.45}vh", "width": "100%"},
-                      config=CONFIG_GRAPHE),
-        ], style={"width": "15%", "display": "inline-block", "verticalAlign": "top",
-                  "textAlign": "center"}),
+        html.Div(
+            [dcc.Graph(id="indicateurs", style={"height": f"{HAUTEUR_HAUT}vh", "width": "100%"},
+                      config=CONFIG_GRAPHE)],
+                style={"width": "15%", "display": "inline-block", "verticalAlign": "top"}),
 
         html.Div([dcc.Graph(id="graphe-energies", style={"height": f"{HAUTEUR_HAUT}vh", "width": "100%"},
                    config=CONFIG_GRAPHE)],
@@ -59,8 +56,7 @@ app.layout = html.Div([
 
     html.Div([
         dcc.Graph(id="graphe-energie-eau-chaude", style={"height": f"{HAUTEUR_BAS}vh", "width": "100%"},
-                   config=CONFIG_GRAPHE)
-    ]),
+                   config=CONFIG_GRAPHE)]),
 
     # Deux intervalles : instantané (10 s) et prévisions (15 min)
     dcc.Interval(id="intervalle-instantane", interval=INTERVALLE_INSTANTANE_MS, n_intervals=0),
@@ -76,21 +72,21 @@ app.layout = html.Div([
 # =============================================
 def mise_en_page(titre, titre_x, titre_y, afficher_legende=False, plage_y=None, plage_y2=None):
     return dict(
-        title=dict(text=titre, font=dict(size=14, color=COULEURS["texte"])),
+        title=dict(text=titre, font=dict(size=16, color=COULEURS["texte"])),
         xaxis=dict(
             title=titre_x, linecolor=COULEURS["texte"], linewidth=1, mirror=True,
             gridcolor=COULEURS["grille"], showgrid=True,
-            tickfont=dict(size=10, color=COULEURS["texte"])
+            tickfont=dict(size=12, color=COULEURS["texte"])
         ),
         yaxis=dict(
             title=titre_y, linecolor=COULEURS["texte"], linewidth=1, mirror=True,
             gridcolor=COULEURS["grille"], showgrid=True,
-            tickfont=dict(size=10, color=COULEURS["texte"]),
+            tickfont=dict(size=12, color=COULEURS["texte"]),
             **({"range": plage_y} if plage_y else {})
         ),
         plot_bgcolor=COULEURS["fond_axes"],
         paper_bgcolor=COULEURS["fond_axes"],
-        font=dict(family="Segoe UI, sans-serif", size=10, color=COULEURS["texte"]),
+        font=dict(family="Segoe UI, sans-serif", size=12, color=COULEURS["texte"]),
         margin=dict(t=36, b=40, l=50, r=20),
         showlegend=afficher_legende,  # <-- instruction unique
         legend=dict(orientation="h", y=1.05, x=1, xanchor="right", font=dict(size=10))
@@ -103,8 +99,7 @@ def mise_en_page(titre, titre_x, titre_y, afficher_legende=False, plage_y=None, 
     [
         Output("graphe-puissances", "figure"),
         Output("graphe-energies", "figure"),
-        Output("indicateur-autoconsommation", "figure"),
-        Output("indicateur-autonomie", "figure"),
+        Output("indicateurs", "figure"),
         Output("derniere-mise-a-jour", "children"),
     ],
     Input("intervalle-instantane", "n_intervals")
@@ -133,6 +128,7 @@ def mettre_a_jour_instantanes(n):
         marker_color=COULEURS["puissance_installee"],
         hovertemplate="%{x} - %{y} W<extra></extra>"
     ))
+
     fig_puissances.update_layout(
         barmode="group",
         **mise_en_page("Puissances installées / instantanées (W)",
@@ -149,13 +145,13 @@ def mettre_a_jour_instantanes(n):
     valeurs = [energie_compteur, energie_autoconsommee, energie_injection]
 
     fig_energies = go.Figure(data=[go.Sankey(
-        arrangement="snap",
+        arrangement="fixed",
         node=dict(
-            pad=15,
-            thickness=20,
+            pad=10,
+            thickness=40,
             label=noms_e,
             color=[COULEURS["prelevee"], COULEURS["produite"], COULEURS["injectee"], COULEURS["consommee"]],
-            line=dict(color=COULEURS["texte"], width=1)
+            line=dict(color=COULEURS["texte"], width=0)
         ),
         link=dict(
             source=sources,
@@ -178,59 +174,31 @@ def mettre_a_jour_instantanes(n):
     taux_autoconsommation = 0.0
     if (energies[1] > 0):
         taux_autoconsommation = energie_autoconsommee / energies[1] * 100
-
-    fig_autoconsommation = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=round(taux_autoconsommation, 1),
-        number=dict(suffix=" %", valueformat=".1f"),
-        title=dict(text="Autoconsommation", font=dict(size=13)),
-        domain=dict(x=[0, 1], y=[0, 1]),
-        gauge=dict(
-            axis=dict(range=[0, 100], tickfont=dict(size=9)),
-            bar=dict(color=COULEURS["produite"]),      # Orange pâle
-            steps=[
-                dict(range=[0, 50], color="rgba(231, 76, 60, 0.15)"),   # Rouge pâle : faible
-                dict(range=[50, 100], color="rgba(46, 204, 113, 0.15)") # Vert pâle : bon
-            ],
-            threshold=dict(line=dict(color=COULEURS["texte"], width=2), value=taux_autoconsommation)
-        )
-    ))
-    fig_autoconsommation.update_layout(
-        height=HAUTEUR_HAUT * 4, margin=dict(t=40, b=10, l=25, r=25),
-        paper_bgcolor=COULEURS["fond_axes"],
-        font=dict(family="Segoe UI, sans-serif", size=12, color=COULEURS["texte"])
-    )
-
     # --- Taux d'autonomie ---
     taux_autonomie = 0.0
     if (energies[3] > 0):
         taux_autonomie = energie_autoconsommee / energies[3] * 100
-
-    fig_autonomie = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=round(taux_autonomie, 1),
-        number=dict(suffix=" %", valueformat=".1f"),
-        title=dict(text="Autonomie", font=dict(size=13)),
-        domain=dict(x=[0, 1], y=[0, 1]),
-        gauge=dict(
-            axis=dict(range=[0, 100], tickfont=dict(size=9)),
-            bar=dict(color=COULEURS["consommee"]),  # Rouge
-            steps=[
-                dict(range=[0, 50], color="rgba(231, 76, 60, 0.15)"),
-                dict(range=[50, 100], color="rgba(46, 204, 113, 0.15)")
-            ],
-            threshold=dict(line=dict(color=COULEURS["texte"], width=2), value=taux_autonomie)
-        )
+    valeurs_indicateur = [taux_autoconsommation, taux_autonomie]
+    noms_indicateur = ['Autoconsommation', 'Autonomie']
+    fig_indicateurs = go.Figure()
+    fig_indicateurs.add_trace(go.Bar(
+        x=noms_indicateur,
+        y=valeurs_indicateur,
+        # name=noms_indicateur,
+        marker_color=[COULEURS["produite"], COULEURS["consommee"], COULEURS["consommee"]],
+        text=[f"{p:,.0f} %" for p in valeurs_indicateur],  # <-- Valeurs affichées
+        textposition="outside",  # <-- Au-dessus des barres
+        # hovermode = False,
+        hovertemplate="%{x}: %{y:,.1f} %<extra></extra>"
     ))
-    fig_autonomie.update_layout(
-        height=HAUTEUR_HAUT * 4, margin=dict(t=40, b=10, l=25, r=25),
-        paper_bgcolor=COULEURS["fond_axes"],
-        font=dict(family="Segoe UI, sans-serif", size=12, color=COULEURS["texte"])
+    fig_indicateurs.update_layout(
+        **mise_en_page('Indicateurs', None, None, plage_y=[0,105]),
     )
 
 
+
     derniere_maj = f"Dernière mise à jour (données : {heure_maj})"
-    return fig_puissances, fig_energies, fig_autoconsommation, fig_autonomie, derniere_maj
+    return fig_puissances, fig_energies, fig_indicateurs, derniere_maj
 
 # =============================================
 # Callback 2 : graphe inférieur (toutes les 15 min)
