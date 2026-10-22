@@ -6,7 +6,7 @@ from datetime import datetime
 def secondes_vers_hhmm(secondes_str):
     """Convertit une chaîne de secondes depuis minuit en HH:mm."""
     secondes = int(secondes_str)
-    heures = secondes // 3600
+    heures = secondes // 3600 % 24
     minutes = (secondes % 3600) // 60
     return f"{heures:02d}:{minutes:02d}"
 
@@ -24,33 +24,30 @@ def _appeler(endpoint):
         print(f"Erreur {endpoint}: {e}")
     return None
 
+def obtenir_datation_puissance():
+    donnees = _appeler(ENDPOINTS["datation_puissance"])
+    if donnees is None:
+        return '--:--:--'
+    else:
+        return timestamp_vers_hhmmss(donnees)
+
 def obtenir_puissances_installees():
     """Récupère les puissances installées : {nom: puissance}."""
     donnees = _appeler(ENDPOINTS["puissances_installees"])
     if donnees is None:
-        return []
+        return [],[]
     if isinstance(donnees, dict):
-        return [donnees["compteur"], donnees["onduleur"], donnees["onduleur"], donnees["compteur"], donnees["ariston"]]
-    return {item[0]: item[1] for item in donnees}
+        return list(donnees.keys()), list(donnees.values())
 
 def obtenir_puissances_instantanees():
     """Récupère les puissances instantanées : {nom: puissance}."""
     noms = []
     puissances = []
-    datation_str = '--:--:--'
     donnees = _appeler(ENDPOINTS["puissances_instantanees"])
     if isinstance(donnees, dict):
-        noms = ['Compteur','Onduleur','Injection','Consommation','Chauffe-eau']
-        donnees['consommation'] = donnees['compteur'] + donnees['onduleur'] - donnees['ariston']
-        if donnees['compteur'] < 0:
-            donnees['injection'] = -donnees['compteur']
-            donnees['compteur'] = 0
-        else:
-            donnees['injection'] = 0
-        puissances = [donnees['compteur'], donnees['onduleur'], donnees['injection'], donnees['consommation'], donnees['ariston']]
-        if 'datation' in donnees:
-            datation_str = timestamp_vers_hhmmss(donnees['datation'])
-    return noms, puissances, datation_str
+        noms = list(donnees.keys())
+        puissances = list(donnees.values())
+    return noms, puissances
 
 def obtenir_energies_instantanees():
     """
@@ -90,6 +87,18 @@ def obtenir_energie_estimee():
         for element in donnees
     ]
 
+def obtenir_dernieres_energies():
+    """Récupère l'énergie estimée et convertit les horodatages en HH:mm."""
+    donnees = _appeler(ENDPOINTS["dernieres_energies"])
+    if donnees is None or len(donnees) == 0:
+        return [],[],[],[]
+    if isinstance(donnees, list):
+        horodatages = [secondes_vers_hhmm(donnee['datation']) for donnee in donnees]
+        produites = [donnee['produite'] for donnee in donnees]
+        prelevees = [donnee['prelevee'] for donnee in donnees]
+        injectees = [donnee['injectee'] for donnee in donnees]
+        return horodatages, produites, prelevees, injectees
+
 def obtenir_planification_eau_chaude():
     """Récupère la planification de l'eau chaude et convertit les horodatages en HH:mm."""
     donnees = _appeler(ENDPOINTS["planification_eau_chaude"])
@@ -101,12 +110,4 @@ def obtenir_planification_eau_chaude():
             {"horodatage": secondes_vers_hhmm(cle), "temperature": valeur}
             for cle, valeur in donnees.items()
         ]
-    # Liste de triplets [horodatage, temperature, puissance]
-    return [
-        {
-            "horodatage": secondes_vers_hhmm(str(element[0])),
-            "temperature": element[1],
-            "puissance": element[2] if len(element) > 2 else 0
-        }
-        for element in donnees
-    ]
+    

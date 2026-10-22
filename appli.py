@@ -11,10 +11,12 @@ from configuration import (
     INTERVALLE_INSTANTANE_MS, INTERVALLE_PREVISION_MS
 )
 from services import (
+    obtenir_datation_puissance,
     obtenir_puissances_installees,
     obtenir_puissances_instantanees,
     obtenir_energies_instantanees,
     obtenir_energie_estimee,
+    obtenir_dernieres_energies,
     obtenir_planification_eau_chaude
 )
 
@@ -105,24 +107,25 @@ def mise_en_page(titre, titre_x, titre_y, afficher_legende=False, plage_y=None, 
     Input("intervalle-instantane", "n_intervals")
 )
 def mettre_a_jour_instantanes(n):
-    puissances_installees = obtenir_puissances_installees()
-    noms_p, puissances_instantanees,heure_maj = obtenir_puissances_instantanees()
+    heure_maj = obtenir_datation_puissance()
+    noms_p1, puissances_installees = obtenir_puissances_installees()
+    noms_p2, puissances_instantanees = obtenir_puissances_instantanees()
     noms_e, energies = obtenir_energies_instantanees()
 
     # --- 1. Puissances installées vs instantanées (légende affichée) ---
     fig_puissances = go.Figure()
     fig_puissances.add_trace(go.Bar(
-        x=noms_p,
+        x=noms_p2,
         y=puissances_instantanees,
         name="Instantanée",
-        marker_color=[COULEURS["prelevee"], COULEURS["produite"], COULEURS["injectee"], COULEURS["consommee"], COULEURS["consommee"]],
+        marker_color=[COULEURS["prelevee"], COULEURS["injectee"], COULEURS["produite"], COULEURS["consommee"], COULEURS["consommee"]],
         text=[f"{p:,.0f} W" for p in puissances_instantanees],  # <-- Valeurs affichées
         textposition="outside",  # <-- Au-dessus des barres
         # hovermode = False,
         hovertemplate="<b>%{x}</b><br>Instantanée: %{y} W<extra></extra>"
     ))
     fig_puissances.add_trace(go.Bar(
-        x = noms_p,
+        x = noms_p1,
         y = puissances_installees,
         name="Installée",
         marker_color=COULEURS["puissance_installee"],
@@ -192,7 +195,7 @@ def mettre_a_jour_instantanes(n):
         hovertemplate="%{x}: %{y:,.1f} %<extra></extra>"
     ))
     fig_indicateurs.update_layout(
-        **mise_en_page('Indicateurs', None, None, plage_y=[0,105]),
+        **mise_en_page('Performances', None, None, plage_y=[0,105]),
     )
 
 
@@ -208,13 +211,15 @@ def mettre_a_jour_instantanes(n):
     Input("intervalle-prevision", "n_intervals")
 )
 def mettre_a_jour_prevision(n):
-    puissances_installees = obtenir_puissances_installees()
+    # puissances_installees = obtenir_puissances_installees()
     energie_estimee = obtenir_energie_estimee()
+    horodatages,energies_produites,energies_prelevees,energies_injectees = obtenir_dernieres_energies()
     planification_eau_chaude = obtenir_planification_eau_chaude()
 
     # Échelle de l'énergie estimée :
     # puissance installée de l'onduleur × période d'échantillonnage (0,25 h)
-    puissance_onduleur = puissances_installees[1]
+    # puissance_onduleur = puissances_installees[1]
+    puissance_onduleur = 6000.0
     energie_max_estimee = puissance_onduleur * PERIODE_ESTIMATION_H
     # Petite marge de 10 % au-dessus du maximum théorique
     plage_energie = [0, energie_max_estimee * 1.1] if energie_max_estimee > 0 else None
@@ -226,6 +231,15 @@ def mettre_a_jour_prevision(n):
             x=[d["horodatage"] for d in energie_estimee],
             y=[d["energie"] for d in energie_estimee],
             name="Énergie estimée (Wh)",
+            marker_color=COULEURS["estimee"],
+            hovertemplate="%{x} - %{y:,.0f} Wh<extra></extra>"
+        ))
+
+    if energies_produites:
+        fig_combine.add_trace(go.Bar(
+            x=horodatages,
+            y=energies_produites,
+            name="Énergie produite (Wh)",
             marker_color=COULEURS["produite"],
             hovertemplate="%{x} - %{y:,.0f} Wh<extra></extra>"
         ))
@@ -262,10 +276,10 @@ def mettre_a_jour_prevision(n):
     mise_en_page_combine["margin"]["r"] = 50
     mise_en_page_combine["xaxis"]["tickangle"] = -45
     fig_combine.update_layout(
-        barmode='relative',
+        barmode="group",
         **mise_en_page_combine)
 
-    if not energie_estimee and not planification_eau_chaude:
+    if not energie_estimee and energies_produites and not planification_eau_chaude:
         fig_combine.add_annotation(
             text="Aucune donnée disponible",
             xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False,

@@ -1,19 +1,22 @@
 {
     "api": {
-        "url_base": "http://192.168.1.28:7890/equilix_api",
+        "url_base": "http://localhost:7890/equilix_api",
         "endpoints": {
+            "datation_puissance": "/puissance/datation",
             "puissances_installees": "/puissance/installee/toutes",
             "puissances_instantanees": "/puissance/instantanee/toutes",
             "energies_instantanees": "/energie/instantanee/toutes",
             "energie_estimee": "/energie/estimee/toutes",
+            "dernieres_energies": "/energie/dernieres",
             "planification_eau_chaude": "/eau_chaude/planifiee/toutes"
         },
         "timeout": 5,
         "intervalle_instantane_ms": 10000,
-        "intervalle_prevision_ms": 900000
+        "intervalle_prevision_ms": 60000
     },
     "couleurs": {
-        "produite": "#F8BF2FFF",
+        "estimee": "#F9CE62FF",
+        "produite": "#F6B309FF",
         "prelevee": "#3F9CD6FF",
         "injectee": "#90EE90",
         "consommee": "#F64D3C7F",
