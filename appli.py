@@ -11,6 +11,7 @@ from configuration import (
     INTERVALLE_INSTANTANE_MS, INTERVALLE_PREVISION_MS
 )
 from services import (
+    obtenir_etat_global,
     obtenir_datation_puissance,
     obtenir_puissances_installees,
     obtenir_puissances_instantanees,
@@ -23,50 +24,223 @@ from services import (
 app = dash.Dash(__name__, suppress_callback_exceptions=True, assets_folder='assets', routes_pathname_prefix='/equilix/')
 server = app.server
 
+PREFIXE_URL = AFFICHAGE.get("prefixe_url_appli", "").rstrip("/")
+# Chemins absolus de l'application (préfixe inclus)
+URL_ACCUEIL = f"{PREFIXE_URL}/"
+URL_ETAT_GLOBAL = f"{PREFIXE_URL}/etat"
+
+LOGO = AFFICHAGE.get("logo")
+LOGO_HAUTEUR = AFFICHAGE.get("logo_hauteur_px", 48)
+COULEURS_GROUPES = COULEURS
+COULEUR_GROUPE_DEFAUT = COULEURS["couleur_defaut"]
 HAUTEUR_HAUT = AFFICHAGE.get("hauteur_graphe_haut_vh", 42)
 HAUTEUR_BAS = AFFICHAGE.get("hauteur_graphe_bas_vh", 42)
 ENERGIE_MAX_WH = AFFICHAGE.get("energie_max_wh", 50000)
 PERIODE_ESTIMATION_H = AFFICHAGE.get("periode_estimation_h", 0.25)  # 15 minutes
 CONFIG_GRAPHE = {"displayModeBar": False}
+# Configuration (déjà définie) :
+LOGO = AFFICHAGE.get("logo")                       # "logo_equilix.png"
+LOGO_HAUTEUR = AFFICHAGE.get("logo_hauteur_px", 48)
+
+app.layout = html.Div([
+    dcc.Location(id="url", refresh=False),
+
+    # --- En-tête commun : logo + titre "Equilix - Suivi" ---
+    html.Div([
+        html.Img(
+            src=app.get_asset_url(LOGO),
+            style={"height": f"{LOGO_HAUTEUR}px", "width": "auto",
+                   "verticalAlign": "middle", "marginRight": "10px"}
+        ),
+        html.H2("Equilix - Suivi", style={"textAlign": "center", "marginRight": "10px"}),
+        html.Div("Dernière mise à jour : --:--", id="derniere-mise-a-jour",
+                 style={"textAlign": "center", "verticalAlign": "bottom", "fontStyle": "italic", "fontSize": "12px"}),
+        html.Div([
+            # Bouton de bascule vers le tableau de bord (visible partout)
+            dcc.Link(
+                html.Button("📊 Tableau de bord", style={
+                    "padding": "6px 14px", "fontSize": "13px",
+                    "backgroundColor": COULEURS["prelevee"],
+                    "color": "white", "border": "none",
+                    "borderRadius": "6px", "cursor": "pointer",
+                    "float": "right", "marginLeft": "8px"
+                }),
+                href=URL_ACCUEIL, refresh=False
+            ),
+            # Bouton vers l'état global
+            dcc.Link(
+                html.Button("🌐 État global", style={
+                    "padding": "6px 14px", "fontSize": "13px",
+                    "backgroundColor": "white",
+                    "border": "1px solid " + COULEURS["grille"],
+                    "borderRadius": "6px", "cursor": "pointer",
+                    "float": "right", "marginLeft": "8px"
+                }),
+                href=URL_ETAT_GLOBAL, refresh=False
+            ),
+        ], style={
+            "marginLeft": "auto",           # <-- Alignement à droite
+            "display": "flex", "alignItems": "center"
+        }),
+    ], style={
+        "padding": "8px 20px",
+        "borderBottom": f"1px solid {COULEURS['grille']}",
+        "backgroundColor": "#f8f9fa",
+        "display": "flex", "alignItems": "center"
+    }),
+
+    # --- Conteneur de page (contenu spécifique à chaque écran) ---
+    html.Div(id="conteneur-page", style={
+        "padding": "10px", "height": "calc(100vh - 55px)", "overflowY": "auto"
+    }),
+
+    # --- Intervalles (rafraîchissement 10 s, clé de config partagée) ---
+    dcc.Interval(id="intervalle-instantane", interval=INTERVALLE_INSTANTANE_MS, n_intervals=0),
+    dcc.Interval(id="intervalle-prevision", interval=INTERVALLE_PREVISION_MS, n_intervals=0),
+])
+
+# =============================================
+# Routage : sélectionne la page selon l'URL
+# =============================================
+@callback(Output("conteneur-page", "children"), Input("url", "pathname"))
+def afficher_page(pathname):
+    if pathname == URL_ETAT_GLOBAL:
+        return html.Div(id="conteneur-etat-global")
+    return layout_tableau_de_bord()
+
+@callback(
+    Output("conteneur-etat-global", "children"),
+    Input("intervalle-instantane", "n_intervals")
+)
+def mettre_a_jour_etat_global(n):
+    donnees = obtenir_etat_global()
+    return construire_page_etat_global(donnees)
+
+#  Rendu générique de l'état global
+def construire_page_etat_global(donnees):
+    """
+    Niveau 1 : regroupements empilés verticalement (titre = clé)
+    Niveau 2 : groupes affichés horizontalement, COULEUR = FOND DE LA CARTE
+    Niveau 3 : couples clé/valeur alignés verticalement (valeurs en taille 16)
+    """
+    # Police identique aux figures du tableau de bord
+    POLICE = {"fontFamily": "Segoe UI, sans-serif"}
+
+    if not donnees:
+        return html.Div("Aucune donnée d'état global disponible",
+                         style={"textAlign": "center", "marginTop": "50px",
+                                "fontSize": "16px", **POLICE})
+
+    sections = []
+    for nom_section, groupes in donnees.items():
+
+        # --- Groupes du 2e niveau : alignement HORIZONTAL ---
+        cartes = []
+        for nom_groupe, valeurs in groupes.items():
+            # Couleur du groupe (clé de config = clé du regroupement) -> FOND de carte
+            couleur = COULEURS_GROUPES.get(nom_groupe, COULEUR_GROUPE_DEFAUT)
+
+            if isinstance(valeurs, dict):
+                # --- Données du 3e niveau : alignement vertical des valeurs ---
+                lignes = [
+                    html.Div([
+                        html.Span(cle, style={
+                            "flex": "1", "textAlign": "left",
+                            "fontSize": "14px",                  # Clé
+                            "color": COULEURS["texte"]           # Police neutre
+                        }),
+                        html.Span(rendre_valeur_texte(val), style={
+                            "flex": "1", "textAlign": "right",
+                            "fontSize": "16px",                  # <-- VALEUR en taille 16
+                            "fontWeight": "bold",
+                            "color": COULEURS["texte"]           # Police neutre
+                        }),
+                    ], style={
+                        "display": "flex", "justifyContent": "space-between",
+                        "margin": "3px 0"
+                    })
+                    for cle, val in valeurs.items()
+                ]
+            else:
+                lignes = [html.Div(rendre_valeur_texte(valeurs),
+                                   style={"fontSize": "16px", "textAlign": "right",
+                                          "fontWeight": "bold",
+                                          "color": COULEURS["texte"]})]
+
+            # Carte : couleur en FOND, polices neutres, police Segoe UI
+            cartes.append(html.Div([
+                html.Div(nom_groupe, style={
+                    "fontWeight": "bold", "fontSize": "14px",
+                    "color": COULEURS["texte"],                 # <-- Pas de couleur sur la police
+                    "borderBottom": f"1px solid {COULEURS['grille']}",
+                    "paddingBottom": "4px", "marginBottom": "6px"
+                }),
+                html.Div(lignes),
+            ], style={
+                "backgroundColor": couleur,                     # <-- COULEUR EN FOND DE CARTE
+                "borderRadius": "8px",
+                "padding": "10px",
+                "minWidth": "200px",
+                "flex": "1",
+                "margin": "5px",
+                **POLICE                                        # <-- Segoe UI, comme les figures
+            }))
+
+        # --- Regroupement du 1er niveau : empilé VERTICALEMENT ---
+        sections.append(html.Div([
+            html.H3(nom_section, style={
+                "margin": "10px 0 5px 5px", "fontSize": "16px",
+                "color": COULEURS["texte"],
+                "borderLeft": f"4px solid {COULEURS['grille']}",
+                "paddingLeft": "8px", **POLICE
+            }),
+            html.Div(cartes, style={
+                "display": "flex", "flexDirection": "row",
+                "flexWrap": "wrap"
+            }),
+        ]))
+
+    return html.Div(sections)
+
+def rendre_valeur_texte(valeur):
+    """Convertit une valeur du 3e niveau en texte affichable."""
+    if isinstance(valeur, bool):
+        return "✅" if valeur else "❌"
+    if isinstance(valeur, float):
+        return formater_nombre(valeur, 1)
+    if isinstance(valeur, (int,)):
+        return formater_nombre(valeur)
+    if isinstance(valeur, dict):
+        return "; ".join(f"{k}={v}" for k, v in valeur.items())
+    if isinstance(valeur, list):
+        return ", ".join(str(v) for v in valeur)
+    return str(valeur)
 
 # =============================================
 # Layout : contraint dans la vue, deux intervalles
 # =============================================
-app.layout = html.Div([
-    html.Div([
-        html.H2(AFFICHAGE.get("titre", "Tableau de bord"),
-                style={"textAlign": "center", "margin": "0 0 4px 0", "fontSize": "20px"}),
-        html.Div("Dernière mise à jour : --:--", id="derniere-mise-a-jour",
-                 style={"textAlign": "center", "marginBottom": "8px", "fontStyle": "italic", "fontSize": "12px"}),
-    ]),
+def layout_tableau_de_bord():
+    return html.Div([
+        html.Div([
+            html.Div([dcc.Graph(id="graphe-puissances", style={"height": f"{HAUTEUR_HAUT}vh", "width": "100%"},
+                       config=CONFIG_GRAPHE)],
+                     style={"width": "65%", "display": "inline-block", "verticalAlign": "top"}),
 
-    html.Div([
-        html.Div([dcc.Graph(id="graphe-puissances", style={"height": f"{HAUTEUR_HAUT}vh", "width": "100%"},
-                   config=CONFIG_GRAPHE)],
-                 style={"width": "65%", "display": "inline-block", "verticalAlign": "top"}),
+            # Indicateurs (centre, empilés verticalement)
+            html.Div(
+                [dcc.Graph(id="indicateurs", style={"height": f"{HAUTEUR_HAUT}vh", "width": "100%"},
+                          config=CONFIG_GRAPHE)],
+                    style={"width": "15%", "display": "inline-block", "verticalAlign": "top"}),
 
-        # Indicateurs (centre, empilés verticalement)
-        html.Div(
-            [dcc.Graph(id="indicateurs", style={"height": f"{HAUTEUR_HAUT}vh", "width": "100%"},
-                      config=CONFIG_GRAPHE)],
-                style={"width": "15%", "display": "inline-block", "verticalAlign": "top"}),
+            html.Div([dcc.Graph(id="graphe-energies", style={"height": f"{HAUTEUR_HAUT}vh", "width": "100%"},
+                       config=CONFIG_GRAPHE)],
+                     style={"width": "20%", "display": "inline-block", "verticalAlign": "top"}),
+        ]),
 
-        html.Div([dcc.Graph(id="graphe-energies", style={"height": f"{HAUTEUR_HAUT}vh", "width": "100%"},
-                   config=CONFIG_GRAPHE)],
-                 style={"width": "20%", "display": "inline-block", "verticalAlign": "top"}),
-    ]),
-
-    html.Div([
-        dcc.Graph(id="graphe-energie-eau-chaude", style={"height": f"{HAUTEUR_BAS}vh", "width": "100%"},
-                   config=CONFIG_GRAPHE)]),
-
-    # Deux intervalles : instantané (10 s) et prévisions (15 min)
-    dcc.Interval(id="intervalle-instantane", interval=INTERVALLE_INSTANTANE_MS, n_intervals=0),
-    dcc.Interval(id="intervalle-prevision", interval=INTERVALLE_PREVISION_MS, n_intervals=0),
-], style={
-    "height": "100vh", "overflow": "hidden", "padding": "10px",
-    "boxSizing": "border-box", "display": "flex", "flexDirection": "column",
-})
+        html.Div([
+            dcc.Graph(id="graphe-energie-eau-chaude", style={"height": f"{HAUTEUR_BAS}vh", "width": "100%"},
+                       config=CONFIG_GRAPHE)]),
+    ])
 
 # =============================================
 # Fonction de mise en page commune
@@ -99,15 +273,23 @@ def mise_en_page(titre, titre_x, titre_y, afficher_legende=False, plage_y=None, 
 # =============================================
 @callback(
     [
-        Output("graphe-puissances", "figure"),
-        Output("graphe-energies", "figure"),
-        Output("indicateurs", "figure"),
         Output("derniere-mise-a-jour", "children"),
     ],
     Input("intervalle-instantane", "n_intervals")
 )
-def mettre_a_jour_instantanes(n):
+def derniere_mise_a_jour(periode):
     heure_maj = obtenir_datation_puissance()
+    return [f"Dernière mise à jour (données : {heure_maj}"]
+
+@callback(
+    [
+        Output("graphe-puissances", "figure"),
+        Output("graphe-energies", "figure"),
+        Output("indicateurs", "figure"),
+    ],
+    Input("intervalle-instantane", "n_intervals")
+)
+def mettre_a_jour_instantanes(periode):
     noms_p1, puissances_installees = obtenir_puissances_installees()
     noms_p2, puissances_instantanees = obtenir_puissances_instantanees()
     noms_e, energies = obtenir_energies_instantanees()
@@ -122,14 +304,14 @@ def mettre_a_jour_instantanes(n):
         text=[f"{p:,.0f} W" for p in puissances_instantanees],  # <-- Valeurs affichées
         textposition="outside",  # <-- Au-dessus des barres
         # hovermode = False,
-        hovertemplate="<b>%{x}</b><br>Instantanée: %{y} W<extra></extra>"
+        hovertemplate="%{x}: %{y} W<extra></extra>"
     ))
     fig_puissances.add_trace(go.Bar(
         x = noms_p1,
         y = puissances_installees,
         name="Installée",
         marker_color=COULEURS["puissance_installee"],
-        hovertemplate="%{x} - %{y} W<extra></extra>"
+        hovertemplate="%{x}: max %{y} W<extra></extra>"
     ))
 
     fig_puissances.update_layout(
@@ -161,7 +343,7 @@ def mettre_a_jour_instantanes(n):
             target=cibles,
             value=valeurs,
             color=COULEURS['puissance_installee'],
-            hovertemplate="<b>%{source.label} → %{target.label}</b><br>Énergie: %{value} Wh<extra></extra>"
+            hovertemplate="Énergie: %{value} Wh<extra></extra>"
         )
     )])
     fig_energies.update_layout(
@@ -198,10 +380,7 @@ def mettre_a_jour_instantanes(n):
         **mise_en_page('Performances', None, None, plage_y=[0,105]),
     )
 
-
-
-    derniere_maj = f"Dernière mise à jour (données : {heure_maj})"
-    return fig_puissances, fig_energies, fig_indicateurs, derniere_maj
+    return fig_puissances, fig_energies, fig_indicateurs
 
 # =============================================
 # Callback 2 : graphe inférieur (toutes les 15 min)

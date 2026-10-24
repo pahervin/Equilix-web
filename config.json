@@ -2,6 +2,7 @@
     "api": {
         "url_base": "http://localhost:7890/equilix_api",
         "endpoints": {
+            "etat_global": "/etat/global",
             "datation_puissance": "/puissance/datation",
             "puissances_installees": "/puissance/installee/toutes",
             "puissances_instantanees": "/puissance/instantanee/toutes",
@@ -15,6 +16,12 @@
         "intervalle_prevision_ms": 60000
     },
     "couleurs": {
+        "Onduleur": "#F6B309FF",
+        "Abonnement": "#3F9CD6FF",
+        "Injection": "#90EE90",
+        "Prévision": "#27CFF5FF",
+        "Chauffe-eau": "#F64D3C7F",
+        "Equip. non-pilotés": "#F64D3C7F",
         "estimee": "#F9CE62FF",
         "produite": "#F6B309FF",
         "prelevee": "#3F9CD6FF",
@@ -23,10 +30,14 @@
         "puissance_installee": "rgba(200, 200, 200, 0.5)",
         "texte": "#000000",
         "fond_axes": "rgba(0, 0, 0, 0)",
-        "grille": "rgba(128, 128, 128, 0.2)"
+        "grille": "rgba(128, 128, 128, 0.3)",
+        "couleur_defaut": "#7F8C8D"
     },
     "affichage": {
+        "prefixe_url_appli": "/equilix",
         "titre": "📊 Equilix - Tableau de bord",
+        "logo": "asset/logo-equilix.svg",
+        "logo_hauteur_px": 48,
         "hauteur_graphe_haut_vh": 42,
         "hauteur_graphe_bas_vh": 42,
         "energie_max_wh": 55000,

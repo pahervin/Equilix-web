@@ -24,6 +24,11 @@ def _appeler(endpoint):
         print(f"Erreur {endpoint}: {e}")
     return None
 
+def obtenir_etat_global():
+    """Récupère l'état global (dictionnaire à 3 niveaux hiérarchiques)."""
+    donnees = _appeler(ENDPOINTS["etat_global"])
+    return donnees if isinstance(donnees, dict) else {}
+
 def obtenir_datation_puissance():
     donnees = _appeler(ENDPOINTS["datation_puissance"])
     if donnees is None:
