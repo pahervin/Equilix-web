@@ -1,6 +1,6 @@
 {
     "api": {
-        "url_base": "http://localhost:7890/equilix_api",
+        "url_base": "http://192.168.1.28:7890/equilix_api",
         "endpoints": {
             "etat_global": "/etat/global",
             "datation_puissance": "/puissance/datation",
@@ -31,13 +31,13 @@
         "texte": "#000000",
         "fond_axes": "rgba(0, 0, 0, 0)",
         "grille": "rgba(128, 128, 128, 0.3)",
-        "couleur_defaut": "#7F8C8D"
+        "couleur_defaut": "#D9DDDD"
     },
     "affichage": {
         "prefixe_url_appli": "/equilix",
         "titre": "📊 Equilix - Tableau de bord",
         "logo": "asset/logo-equilix.svg",
-        "logo_hauteur_px": 48,
+        "logo_hauteur_px": 100,
         "hauteur_graphe_haut_vh": 42,
         "hauteur_graphe_bas_vh": 42,
         "energie_max_wh": 55000,

@@ -26,8 +26,8 @@ server = app.server
 
 PREFIXE_URL = AFFICHAGE.get("prefixe_url_appli", "").rstrip("/")
 # Chemins absolus de l'application (préfixe inclus)
-URL_ACCUEIL = f"{PREFIXE_URL}/"
-URL_ETAT_GLOBAL = f"{PREFIXE_URL}/etat"
+URL_TABLEAU_DE_BORD = f"{PREFIXE_URL}/suivi"
+URL_ETAT_GLOBAL = f"{PREFIXE_URL}/"
 
 LOGO = AFFICHAGE.get("logo")
 LOGO_HAUTEUR = AFFICHAGE.get("logo_hauteur_px", 48)
@@ -41,6 +41,7 @@ CONFIG_GRAPHE = {"displayModeBar": False}
 # Configuration (déjà définie) :
 LOGO = AFFICHAGE.get("logo")                       # "logo_equilix.png"
 LOGO_HAUTEUR = AFFICHAGE.get("logo_hauteur_px", 48)
+POLICE = {"fontFamily": "Segoe UI, sans-serif"}
 
 app.layout = html.Div([
     dcc.Location(id="url", refresh=False),
@@ -52,25 +53,25 @@ app.layout = html.Div([
             style={"height": f"{LOGO_HAUTEUR}px", "width": "auto",
                    "verticalAlign": "middle", "marginRight": "10px"}
         ),
-        html.H2("Equilix - Suivi", style={"textAlign": "center", "marginRight": "10px"}),
+        html.H2("Equilix - Suivi", style={"textAlign": "center", "marginRight": "10px", **POLICE}),
         html.Div("Dernière mise à jour : --:--", id="derniere-mise-a-jour",
-                 style={"textAlign": "center", "verticalAlign": "bottom", "fontStyle": "italic", "fontSize": "12px"}),
+                 style={"textAlign": "center", "verticalAlign": "bottom", "fontStyle": "italic", "fontSize": "16px", **POLICE}),
         html.Div([
             # Bouton de bascule vers le tableau de bord (visible partout)
             dcc.Link(
-                html.Button("📊 Tableau de bord", style={
-                    "padding": "6px 14px", "fontSize": "13px",
-                    "backgroundColor": COULEURS["prelevee"],
-                    "color": "white", "border": "none",
+                html.Button("Supervision", style={
+                    "padding": "6px 16px", "fontSize": "13px",
+                    "backgroundColor": "white",
+                    "border": "1px solid " + COULEURS["grille"],
                     "borderRadius": "6px", "cursor": "pointer",
                     "float": "right", "marginLeft": "8px"
                 }),
-                href=URL_ACCUEIL, refresh=False
+                href=URL_TABLEAU_DE_BORD, refresh=False
             ),
             # Bouton vers l'état global
             dcc.Link(
-                html.Button("🌐 État global", style={
-                    "padding": "6px 14px", "fontSize": "13px",
+                html.Button("État", style={
+                    "padding": "6px 16px", "fontSize": "13px",
                     "backgroundColor": "white",
                     "border": "1px solid " + COULEURS["grille"],
                     "borderRadius": "6px", "cursor": "pointer",
@@ -123,8 +124,6 @@ def construire_page_etat_global(donnees):
     Niveau 2 : groupes affichés horizontalement, COULEUR = FOND DE LA CARTE
     Niveau 3 : couples clé/valeur alignés verticalement (valeurs en taille 16)
     """
-    # Police identique aux figures du tableau de bord
-    POLICE = {"fontFamily": "Segoe UI, sans-serif"}
 
     if not donnees:
         return html.Div("Aucune donnée d'état global disponible",
@@ -146,7 +145,7 @@ def construire_page_etat_global(donnees):
                     html.Div([
                         html.Span(cle, style={
                             "flex": "1", "textAlign": "left",
-                            "fontSize": "14px",                  # Clé
+                            "fontSize": "16px",                  # Clé
                             "color": COULEURS["texte"]           # Police neutre
                         }),
                         html.Span(rendre_valeur_texte(val), style={
@@ -170,7 +169,7 @@ def construire_page_etat_global(donnees):
             # Carte : couleur en FOND, polices neutres, police Segoe UI
             cartes.append(html.Div([
                 html.Div(nom_groupe, style={
-                    "fontWeight": "bold", "fontSize": "14px",
+                    "fontWeight": "bold", "fontSize": "18px",
                     "color": COULEURS["texte"],                 # <-- Pas de couleur sur la police
                     "borderBottom": f"1px solid {COULEURS['grille']}",
                     "paddingBottom": "4px", "marginBottom": "6px"
@@ -189,8 +188,9 @@ def construire_page_etat_global(donnees):
         # --- Regroupement du 1er niveau : empilé VERTICALEMENT ---
         sections.append(html.Div([
             html.H3(nom_section, style={
-                "margin": "10px 0 5px 5px", "fontSize": "16px",
+                "margin": "10px 0 5px 5px", "fontSize": "20px",
                 "color": COULEURS["texte"],
+                "backgroundcolor": COULEURS["couleur_defaut"],
                 "borderLeft": f"4px solid {COULEURS['grille']}",
                 "paddingLeft": "8px", **POLICE
             }),
@@ -198,7 +198,13 @@ def construire_page_etat_global(donnees):
                 "display": "flex", "flexDirection": "row",
                 "flexWrap": "wrap"
             }),
-        ]))
+        ], style={
+            "margin": "5px",
+            "backgroundColor": COULEURS["couleur_defaut"],
+            "paddingLeft": "8px",
+            "borderRadius": "8px",
+        }
+        ))
 
     return html.Div(sections)
 
