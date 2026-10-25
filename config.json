@@ -35,9 +35,9 @@
     },
     "affichage": {
         "prefixe_url_appli": "/equilix",
-        "titre": "📊 Equilix - Tableau de bord",
-        "logo": "asset/logo-equilix.svg",
-        "logo_hauteur_px": 100,
+        "titre": "Equilix - Suivi",
+        "logo": "logo_equilix.svg",
+        "logo_hauteur_px": 72,
         "hauteur_graphe_haut_vh": 42,
         "hauteur_graphe_bas_vh": 42,
         "energie_max_wh": 55000,

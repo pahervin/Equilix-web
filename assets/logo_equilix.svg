@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 155" width="240" height="155">
+  <!-- Soleil rapproché du panneau solaire -->
+  <g stroke="#E67E22" stroke-width="3" stroke-linecap="round">
+    <line x1="76" y1="4"  x2="76" y2="12"/>
+    <line x1="54" y1="26" x2="62" y2="26"/>
+    <line x1="60" y1="12" x2="66" y2="18"/>
+  </g>
+  <circle cx="76" cy="26" r="11" fill="#FDB813" stroke="#E67E22" stroke-width="2"/>
+
+  <!-- Nuage masquant partiellement le soleil -->
+  <g fill="#ECF0F1" stroke="#BDC3C7" stroke-width="1.5">
+    <circle cx="92" cy="20" r="8"/>
+    <circle cx="104" cy="24" r="10"/>
+    <ellipse cx="102" cy="32" rx="17" ry="8"/>
+  </g>
+
+  <!-- Fléau RACCOURCI et incliné (panneau plus bas) -->
+  <rect x="60" y="112" width="120" height="7" rx="3.5" fill="#5D6D7E"
+        transform="rotate(-6 120 115.5)"/>
+
+  <!-- Pied réduit de moitié -->
+  <rect x="116.5" y="116" width="7" height="27" fill="#5D6D7E"/>
+  <ellipse cx="120" cy="144" rx="22" ry="5" fill="#5D6D7E"/>
+
+  <!-- Repère d'équilibre -->
+  <polygon points="120,101 115,110 125,110" fill="#229954"/>
+
+  <!-- Panneau solaire posé sur l'extrémité BASSE (gauche) -->
+  <rect x="64" y="67" width="48" height="48" fill="#1A5276" stroke="#85929E" stroke-width="2.5"/>
+  <g stroke="#5DADE2" stroke-width="1.2">
+    <line x1="64" y1="83"  x2="112" y2="83"/>
+    <line x1="64" y1="99"  x2="112" y2="99"/>
+    <line x1="80" y1="67"  x2="80"  y2="115"/>
+    <line x1="96" y1="67"  x2="96"  y2="115"/>
+  </g>
+
+  <!-- Maison posée sur l'extrémité HAUTE (droite) -->
+  <rect x="128" y="74" width="48" height="34" fill="#F6E7C1" stroke="#8D6E63" stroke-width="1.5"/>
+  <polygon points="122,74 152,52 182,74" fill="#B03A2E" stroke="#7B241C" stroke-width="1"/>
+  <polygon points="156,78 147,90 153,90 148,100 162,86 155,86 160,78" fill="#F39C12"/>
+</svg>

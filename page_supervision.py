@@ -1,0 +1,253 @@
+from dash import html, dcc, callback, Output, Input
+from plotly import graph_objects as go
+
+from configuration import (
+    COULEURS,
+    AFFICHAGE,
+)
+
+from services import (
+    obtenir_puissances_installees,
+    obtenir_puissances_instantanees,
+    obtenir_energies_instantanees,
+    obtenir_dernieres_energies,
+    obtenir_energie_estimee,
+    obtenir_planification_eau_chaude,
+)
+
+HAUTEUR_HAUT = AFFICHAGE.get("hauteur_graphe_haut_vh", 42)
+HAUTEUR_BAS = AFFICHAGE.get("hauteur_graphe_bas_vh", 42)
+PERIODE_ESTIMATION_H = AFFICHAGE.get("periode_estimation_h", 0.25)  # 15 minutes
+CONFIG_GRAPHE = {"displayModeBar": False}
+
+
+def layout_tableau_de_bord():
+    return html.Div([
+        html.Div([
+            html.Div([dcc.Graph(id="graphe-puissances", style={"height": f"{HAUTEUR_HAUT}vh", "width": "100%"},
+                       config=CONFIG_GRAPHE)],
+                     style={"width": "65%", "display": "inline-block", "verticalAlign": "top"}),
+
+            # Indicateurs (centre, empilés verticalement)
+            html.Div(
+                [dcc.Graph(id="indicateurs", style={"height": f"{HAUTEUR_HAUT}vh", "width": "100%"},
+                          config=CONFIG_GRAPHE)],
+                    style={"width": "15%", "display": "inline-block", "verticalAlign": "top"}),
+
+            html.Div([dcc.Graph(id="graphe-energies", style={"height": f"{HAUTEUR_HAUT}vh", "width": "100%"},
+                       config=CONFIG_GRAPHE)],
+                     style={"width": "20%", "display": "inline-block", "verticalAlign": "top"}),
+        ]),
+
+        html.Div([
+            dcc.Graph(id="graphe-energie-eau-chaude", style={"height": f"{HAUTEUR_BAS}vh", "width": "100%"},
+                       config=CONFIG_GRAPHE)]),
+    ])
+
+
+def mise_en_page(titre, titre_x, titre_y, afficher_legende=False, plage_y=None, plage_y2=None):
+    return dict(
+        title=dict(text=titre, font=dict(size=16, color=COULEURS["texte"])),
+        xaxis=dict(
+            title=titre_x, linecolor=COULEURS["texte"], linewidth=1, mirror=True,
+            gridcolor=COULEURS["grille"], showgrid=True,
+            tickfont=dict(size=12, color=COULEURS["texte"])
+        ),
+        yaxis=dict(
+            title=titre_y, linecolor=COULEURS["texte"], linewidth=1, mirror=True,
+            gridcolor=COULEURS["grille"], showgrid=True,
+            tickfont=dict(size=12, color=COULEURS["texte"]),
+            **({"range": plage_y} if plage_y else {})
+        ),
+        plot_bgcolor=COULEURS["fond_axes"],
+        paper_bgcolor=COULEURS["fond_axes"],
+        font=dict(family="Segoe UI, sans-serif", size=12, color=COULEURS["texte"]),
+        margin=dict(t=36, b=40, l=50, r=20),
+        showlegend=afficher_legende,  # <-- instruction unique
+        legend=dict(orientation="h", y=1.05, x=1, xanchor="right", font=dict(size=10))
+    )
+
+
+@callback(
+    [
+        Output("graphe-puissances", "figure"),
+        Output("graphe-energies", "figure"),
+        Output("indicateurs", "figure"),
+    ],
+    Input("intervalle-instantane", "n_intervals")
+)
+def mettre_a_jour_instantanes(periode):
+    noms_p1, puissances_installees = obtenir_puissances_installees()
+    noms_p2, puissances_instantanees = obtenir_puissances_instantanees()
+    noms_e, energies = obtenir_energies_instantanees()
+
+    # --- 1. Puissances installées vs instantanées (légende affichée) ---
+    fig_puissances = go.Figure()
+    fig_puissances.add_trace(go.Bar(
+        x=noms_p2,
+        y=puissances_instantanees,
+        name="Instantanée",
+        marker_color=[COULEURS["prelevee"], COULEURS["injectee"], COULEURS["produite"], COULEURS["consommee"], COULEURS["consommee"]],
+        text=[f"{p:,.0f} W" for p in puissances_instantanees],  # <-- Valeurs affichées
+        textposition="outside",  # <-- Au-dessus des barres
+        # hovermode = False,
+        hovertemplate="%{x}: %{y} W<extra></extra>"
+    ))
+    fig_puissances.add_trace(go.Bar(
+        x = noms_p1,
+        y = puissances_installees,
+        name="Installée",
+        marker_color=COULEURS["puissance_installee"],
+        hovertemplate="%{x}: max %{y} W<extra></extra>"
+    ))
+
+    fig_puissances.update_layout(
+        barmode="group",
+        **mise_en_page("Puissances installées / instantanées (W)",
+                       None, "Puissance (W)", afficher_legende=False)
+    )
+
+    # --- 2. Énergies instantanées (échelle fixée à 50 000 Wh max, pas de légende) ---
+    energie_compteur = energies[0]
+    energie_autoconsommee = energies[1]-energies[2]
+    energie_injection = energies[2]
+    # Liens (source, cible, valeur)
+    sources = [0, 1, 1]   # Compteur, Onduleur, Onduleur
+    cibles  = [3, 3, 2]   # Consommation, Consommation, Injection
+    valeurs = [energie_compteur, energie_autoconsommee, energie_injection]
+
+    fig_energies = go.Figure(data=[go.Sankey(
+        arrangement="fixed",
+        node=dict(
+            pad=10,
+            thickness=40,
+            label=noms_e,
+            color=[COULEURS["prelevee"], COULEURS["produite"], COULEURS["injectee"], COULEURS["consommee"]],
+            line=dict(color=COULEURS["texte"], width=0)
+        ),
+        link=dict(
+            source=sources,
+            target=cibles,
+            value=valeurs,
+            color=COULEURS['puissance_installee'],
+            hovertemplate="Énergie: %{value} Wh<extra></extra>"
+        )
+    )])
+    fig_energies.update_layout(
+        title_text="Energies aujourd'hui (Wh)",
+        font=dict(family="Segoe UI, sans-serif", size=12, color=COULEURS["texte"]),
+        plot_bgcolor=COULEURS["fond_axes"],
+        paper_bgcolor=COULEURS["fond_axes"],
+        margin=dict(t=36, b=36, l=20, r=20),
+        # height=HAUTEUR_HAUT * 4,  # adaptation selon le vh du graphe
+    )
+
+    # --- Taux d'autoconsommation ---
+    taux_autoconsommation = 0.0
+    if (energies[1] > 0):
+        taux_autoconsommation = energie_autoconsommee / energies[1] * 100
+    # --- Taux d'autonomie ---
+    taux_autonomie = 0.0
+    if (energies[3] > 0):
+        taux_autonomie = energie_autoconsommee / energies[3] * 100
+    valeurs_indicateur = [taux_autoconsommation, taux_autonomie]
+    noms_indicateur = ['Autoconsommation', 'Autonomie']
+    fig_indicateurs = go.Figure()
+    fig_indicateurs.add_trace(go.Bar(
+        x=noms_indicateur,
+        y=valeurs_indicateur,
+        # name=noms_indicateur,
+        marker_color=[COULEURS["produite"], COULEURS["consommee"], COULEURS["consommee"]],
+        text=[f"{p:,.0f} %" for p in valeurs_indicateur],  # <-- Valeurs affichées
+        textposition="outside",  # <-- Au-dessus des barres
+        # hovermode = False,
+        hovertemplate="%{x}: %{y:,.1f} %<extra></extra>"
+    ))
+    fig_indicateurs.update_layout(
+        **mise_en_page('Performances', None, None, plage_y=[0,105]),
+    )
+
+    return fig_puissances, fig_energies, fig_indicateurs
+
+
+@callback(
+    Output("graphe-energie-eau-chaude", "figure"),
+    Input("intervalle-prevision", "n_intervals")
+)
+def mettre_a_jour_prevision(n):
+    # puissances_installees = obtenir_puissances_installees()
+    energie_estimee = obtenir_energie_estimee()
+    horodatages,energies_produites,energies_prelevees,energies_injectees = obtenir_dernieres_energies()
+    planification_eau_chaude = obtenir_planification_eau_chaude()
+
+    # Échelle de l'énergie estimée :
+    # puissance installée de l'onduleur × période d'échantillonnage (0,25 h)
+    # puissance_onduleur = puissances_installees[1]
+    puissance_onduleur = 6000.0
+    energie_max_estimee = puissance_onduleur * PERIODE_ESTIMATION_H
+    # Petite marge de 10 % au-dessus du maximum théorique
+    plage_energie = [0, energie_max_estimee * 1.1] if energie_max_estimee > 0 else None
+
+    fig_combine = go.Figure()
+
+    if energie_estimee:
+        fig_combine.add_trace(go.Bar(
+            x=[d["horodatage"] for d in energie_estimee],
+            y=[d["energie"] for d in energie_estimee],
+            name="Énergie estimée (Wh)",
+            marker_color=COULEURS["estimee"],
+            hovertemplate="%{x} - %{y:,.0f} Wh<extra></extra>"
+        ))
+
+    if energies_produites:
+        fig_combine.add_trace(go.Bar(
+            x=horodatages,
+            y=energies_produites,
+            name="Énergie produite (Wh)",
+            marker_color=COULEURS["produite"],
+            hovertemplate="%{x} - %{y:,.0f} Wh<extra></extra>"
+        ))
+
+    if planification_eau_chaude:
+        fig_combine.add_trace(go.Bar(
+            x=[d["horodatage"] for d in planification_eau_chaude],
+            y=[d["temperature"] for d in planification_eau_chaude],
+            # mode="lines+markers",
+            # line=dict(color=COULEURS["eau_chaude"], width=3),
+            # marker=dict(color=COULEURS["eau_chaude"], size=6),
+            marker_color=COULEURS["consommee"],
+            name="Température eau chaude (°C)",
+            yaxis="y2",
+            hovertemplate="%{x} - %{y:.1f} °C<extra></extra>"
+        ))
+
+    mise_en_page_combine = mise_en_page(
+        "Énergie estimée et température de l'eau chaude",
+        "Heure UTC", "Énergie (Wh)",
+        afficher_legende=True,        # légende unique pour ce graphe
+        plage_y=plage_energie         # échelle dérivée de la puissance installée
+    )
+    mise_en_page_combine["yaxis2"] = dict(
+        title="Température (°C)",
+        overlaying="y", side="right",
+        linecolor=COULEURS["texte"], linewidth=1,
+        tickfont=dict(size=10, color=COULEURS["consommee"]),
+        showgrid=False,
+        range=[47.0, 65.0],
+        tick0=50.0,
+        dtick=5.0
+    )
+    mise_en_page_combine["margin"]["r"] = 50
+    mise_en_page_combine["xaxis"]["tickangle"] = -45
+    fig_combine.update_layout(
+        barmode="group",
+        **mise_en_page_combine)
+
+    if not energie_estimee and energies_produites and not planification_eau_chaude:
+        fig_combine.add_annotation(
+            text="Aucune donnée disponible",
+            xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False,
+            font=dict(size=16, color=COULEURS["texte"])
+        )
+
+    return fig_combine
