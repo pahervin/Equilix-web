@@ -1,6 +1,6 @@
 {
     "api": {
-        "url_base": "http://192.168.1.28:7890/equilix_api",
+        "url_base": "http://localhost:7890/equilix_api",
         "endpoints": {
             "etat_global": "/etat/global",
             "datation_puissance": "/puissance/datation",
@@ -16,11 +16,13 @@
         "intervalle_prevision_ms": 60000
     },
     "couleurs": {
+        "Energies":  "#FF7B00FF",
         "Onduleur": "#F6B309FF",
         "Abonnement": "#3F9CD6FF",
         "Injection": "#90EE90",
         "Prévision": "#27CFF5FF",
-        "Chauffe-eau": "#F64D3C7F",
+        "Chauffe-eau": "#FF522BFF",
+        "Wattpilot": "#63B7F8FF",
         "Equip. non-pilotés": "#F64D3C7F",
         "estimee": "#F9CE62FF",
         "produite": "#F6B309FF",

@@ -81,13 +81,17 @@ def mettre_a_jour_instantanes(periode):
     noms_p2, puissances_instantanees = obtenir_puissances_instantanees()
     noms_e, energies = obtenir_energies_instantanees()
 
+    couleurs = []
+    for nom in noms_p1:
+        couleurs.append(COULEURS[nom])
+
     # --- 1. Puissances installées vs instantanées (légende affichée) ---
     fig_puissances = go.Figure()
     fig_puissances.add_trace(go.Bar(
         x=noms_p2,
         y=puissances_instantanees,
         name="Instantanée",
-        marker_color=[COULEURS["prelevee"], COULEURS["injectee"], COULEURS["produite"], COULEURS["consommee"], COULEURS["consommee"]],
+        marker_color=couleurs,
         text=[f"{p:,.0f} W" for p in puissances_instantanees],  # <-- Valeurs affichées
         textposition="outside",  # <-- Au-dessus des barres
         # hovermode = False,
@@ -222,7 +226,7 @@ def mettre_a_jour_prevision(n):
         ))
 
     mise_en_page_combine = mise_en_page(
-        "Énergie estimée et température de l'eau chaude",
+        "Énergie estimée et produite, température de l'eau chaude",
         "Heure UTC", "Énergie (Wh)",
         afficher_legende=True,        # légende unique pour ce graphe
         plage_y=plage_energie         # échelle dérivée de la puissance installée

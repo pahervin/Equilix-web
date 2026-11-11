@@ -40,17 +40,6 @@ app.layout = html.Div([
         html.Div("Dernière mise à jour : --:--", id="derniere-mise-a-jour",
                  style={"textAlign": "center", "verticalAlign": "bottom", "fontStyle": "italic", "fontSize": "16px", **POLICE}),
         html.Div([
-            # Bouton de bascule vers le tableau de bord (visible partout)
-            dcc.Link(
-                html.Button("Supervision", style={
-                    "padding": "6px 16px", "fontSize": "13px",
-                    "backgroundColor": "white",
-                    "border": "1px solid " + COULEURS["grille"],
-                    "borderRadius": "6px", "cursor": "pointer",
-                    "float": "right", "marginLeft": "8px"
-                }),
-                href=URL_TABLEAU_DE_BORD, refresh=False
-            ),
             # Bouton vers l'état global
             dcc.Link(
                 html.Button("État", style={
@@ -61,6 +50,17 @@ app.layout = html.Div([
                     "float": "right", "marginLeft": "8px"
                 }),
                 href=URL_ETAT_GLOBAL, refresh=False
+            ),
+            # Bouton de bascule vers le tableau de bord (visible partout)
+            dcc.Link(
+                html.Button("Supervision", style={
+                    "padding": "6px 16px", "fontSize": "13px",
+                    "backgroundColor": "white",
+                    "border": "1px solid " + COULEURS["grille"],
+                    "borderRadius": "6px", "cursor": "pointer",
+                    "float": "right", "marginLeft": "8px"
+                }),
+                href=URL_TABLEAU_DE_BORD, refresh=False
             ),
         ], style={
             "marginLeft": "auto",           # <-- Alignement à droite
